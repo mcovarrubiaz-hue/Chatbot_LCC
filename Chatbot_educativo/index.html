@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TUTOR MATEMÁTICO PAES LCC</title>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #eef2f3 0%, #d9e7ff 100%);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 30px;
+      color: #1e3a8a;
+    }
+
+    header h1 {
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+
+    header p {
+      font-size: 1rem;
+      color: #374151;
+      margin-bottom: 20px;
+      max-width: 600px;
+    }
+
+    #chatbot-container {
+      width: 420px;
+      height: 620px;
+      background-color: white;
+      border: 3px solid #3b82f6;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 1rem;
+    }
+
+    .message {
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .user {
+      text-align: right;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .bot {
+      text-align: left;
+      color: #111827;
+    }
+
+    #input-area {
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+
+    #user-input {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0 20px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #1e40af;
+    }
+
+    footer {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 15px;
+    }
+  </style>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <h1>TUTOR MATEMÁTICO PAES LCC</h1>
+    <p>Desarrollado por el profesor <strong>Mario Covarrubias</strong>.<br>
+    Escribe tus dudas matemáticas y recibe ayuda paso a paso.</p>
+  </header>
+
+  <div id="chatbot-container">
+    <div id="messages"></div>
+    <div id="input-area">
+      <input id="user-input" type="text" placeholder="Escribe tu pregunta aquí..." />
+      <button id="send-btn">Enviar</button>
+    </div>
+  </div>
+
+  <footer>© 2025 Tutor Matemático PAES LCC</footer>
+
+  <script>
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const messages = document.getElementById("messages");
+
+    // ⚠️ ATENCIÓN: Reemplaza con tus valores CORRECTOS de Cody:
+    // 1. Usa la API Key de "Chatbot" (la que termina en '...d1').
+    // 2. Usa el ID NUMÉRICO (ej: "672674") de tu bot, no el ID largo (UUID).
+    const CODY_API_KEY = "PEGA_AQUI_EL_VALOR_COMPLETO_DE_TU_CLAVE_DE_CHATBOT"; 
+    const BOT_ID = "PEGA_AQUI_EL_ID_NUMERICO_DE_TU_BOT"; // EJEMPLO: "672674"
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function addMessage(text, sender) {
+      const div = document.createElement("div");
+      div.classList.add("message", sender);
+      div.innerHTML = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      if (window.MathJax) MathJax.typeset();
+    }
+
+    async function sendMessage() {
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      addMessage("<b>Tú:</b> " + userText, "user");
+      input.value = "";
+      addMessage("<b>Tutor:</b> Pensando...", "bot");
+
+      try {
+        // CORRECCIÓN CLAVE: Se asegura el protocolo HTTPS para evitar ERR_NAME_NOT_RESOLVED
+        const response = await fetch("https://api.getcody.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + CODY_API_KEY,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            bot_id: BOT_ID,
+            messages: [{ role: "user", content: userText }]
+          })
+        });
+
+        // Manejar errores de respuesta HTTP (401, 403, etc.)
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            let errorMessage = `Error al conectar con Cody (Status ${response.status}).`;
+
+            if (response.status === 401 || response.status === 403) {
+                errorMessage = "Error de autenticación: Verifica tu API Key y el ID del bot.";
+            } else if (errorData.message) {
+                 errorMessage += ` Detalle: ${errorData.message}`;
+            }
+
+            throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        const reply =
+          data?.choices?.[0]?.message?.content ||
+          "No entendí tu pregunta, ¿puedes reformularla?";
+        messages.lastChild.innerHTML = "<b>Tutor:</b> " + reply;
+        if (window.MathJax) MathJax.typeset();
+      } catch (error) {
+        console.error(error);
+        messages.lastChild.innerHTML =
+          "<b>Tutor:</b> Error al conectar con Cody. Por favor, verifica tu conexión a Internet y que la API Key y el ID del bot sean correctos.";
+      }
+    }
+  </script>
+</body>
+</html>
